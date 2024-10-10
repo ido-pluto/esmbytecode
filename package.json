@@ -1,0 +1,56 @@
+{
+  "name": "esmbytecode",
+  "version": "1.0.0",
+  "description": "Compile JS/TS ESM to Bytecode",
+  "main": "dist/index.js",
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "esmbytecode": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc --build tsconfig.json && cp src/reader/build.wasm dist/reader/build.wasm"
+  },
+  "keywords": [
+    "bytenode",
+    "bytecode",
+    "compiler",
+    "compile",
+    "esm"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./node": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./dist/index.js": "./dist/index.js"
+  },
+  "author": "Ido S.",
+  "license": "MIT",
+  "dependencies": {
+    "@swc/core": "^1.7.26",
+    "bytenode": "^1.5.6",
+    "commander": "^12.1.0",
+    "deepmerge": "^4.3.1",
+    "esbuild": "^0.24.0",
+    "fs-extra": "^11.2.0",
+    "glob": "^11.0.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/deepmerge": "^2.2.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.7.4",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.6.3"
+  }
+}

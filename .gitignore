@@ -1,0 +1,12 @@
+/.idea
+/.vscode
+node_modules
+.DS_Store
+
+/dist
+/docs
+
+/.env
+/.eslintcache
+/test/utils/files/big-image.jpg
+/test/utils/files/big-file.jpg
