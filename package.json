@@ -5,11 +5,16 @@
   "main": "dist/index.js",
   "type": "module",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "bin": {
     "esmbytecode": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc --build tsconfig.json && cp src/reader/build.wasm dist/reader/build.wasm"
+    "build": "tsc --build tsconfig.json && cp src/reader/build.wasm dist/reader/build.wasm",
+    "prepack": "npm run build"
   },
   "keywords": [
     "bytenode",
@@ -52,5 +57,9 @@
     "@types/node": "^22.7.4",
     "@types/uuid": "^10.0.0",
     "typescript": "^5.6.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ido-pluto/esmbytecode.git"
   }
 }

@@ -10,6 +10,7 @@ import path from "path";
 import bytenode from 'bytenode';
 import { codeWrapper } from "./codeWrapper.js";
 import fsExtra from "fs-extra/esm";
+import {v4 as uuid} from 'uuid';
 
 export type BundleESMOptions = {
     entryPoint: string;
@@ -23,9 +24,31 @@ export type BundleESMOptions = {
 
 export type BundleESMState = BundleESMOptions & {
     nodeModules?: string | null;
+    nodeAddons: Map<string, string>;
 };
 
-async function esbuildCodeGenerationStep1({ entryPoint, define: addToDefine, compress, esbuildOptions, nodeModules }: BundleESMState) {
+function nodeAddonReadPlugin(nodeAddons: Map<string, string>): esbuild.Plugin {
+    return {
+        name: 'node-file-plugin',
+        setup(build) {
+            build.onLoad({ filter: /.*/ }, async args => {
+                if(!args.path.endsWith('.node') || !await fsExtra.pathExists(args.path)) {
+                    return {};
+                }
+
+                const name = uuid() + path.basename(args.path);
+                nodeAddons.set(name, args.path);
+
+                return {
+                    contents: `module.exports = "${name}";`,
+                    loader: 'js'
+                }
+            });
+        }
+    };
+};
+
+async function esbuildCodeGenerationStep1({ entryPoint, outfile, define: addToDefine, compress, esbuildOptions, nodeModules, nodeAddons }: BundleESMState) {
     const { define, startCode } = addVars({
         "import.meta.dirname": "__dirname",
         "import.meta.filename": "__filename",
@@ -57,7 +80,11 @@ async function esbuildCodeGenerationStep1({ entryPoint, define: addToDefine, com
         fullESBuildOptions.nodePaths = [...fullESBuildOptions?.nodePaths ?? [], nodeModules];
     }
 
-    const bundleResult = await esbuild.build(fullESBuildOptions);
+    const bundleResult = await esbuild.build({
+        ...fullESBuildOptions,
+        plugins: [nodeAddonReadPlugin(nodeAddons), ...fullESBuildOptions.plugins ?? []],
+    });
+
     if (bundleResult.errors.length) {
         throw new Error(bundleResult.errors.map(e => e.text).join("\n"));
     }
@@ -102,6 +129,7 @@ export async function ESMBytecodeBundle(options: BundleESMOptions) {
     const nodeModules = await findNodeModulesDir(options);
     const state: BundleESMState = {
         ...options,
+        nodeAddons: new Map(),
         nodeModules
     };
     const originalFile = state.outfile;
@@ -117,11 +145,11 @@ export async function ESMBytecodeBundle(options: BundleESMOptions) {
     await fs.writeFile(writeJS, finalCode);
 
     await bytenode.compileFile({
-        filename: originalFile,
+        filename: writeJS,
         compress: state.compress
     });
 
-    if(!state.alsoJSOutput){
+    if (!state.alsoJSOutput) {
         await fs.unlink(writeJS);
     }
 
