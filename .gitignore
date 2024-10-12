@@ -10,3 +10,4 @@ node_modules
 /.eslintcache
 /test/utils/files/big-image.jpg
 /test/utils/files/big-file.jpg
+/temp

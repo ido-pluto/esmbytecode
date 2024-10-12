@@ -27,10 +27,26 @@ export type BundleESMState = BundleESMOptions & {
     nodeAddons: Map<string, string>;
 };
 
-function nodeAddonReadPlugin(nodeAddons: Map<string, string>): esbuild.Plugin {
+function nodeAddonReadPlugin(nodeAddons: Map<string, string>, nodePaths: string[] = []): esbuild.Plugin {
     return {
         name: 'node-file-plugin',
         setup(build) {
+            build.onResolve({ filter: /.*/ }, async args => {
+                if(path.isAbsolute(args.path) || args.path.startsWith('.')) {
+                    return {};
+                }
+
+                for(const nodePath of nodePaths) {
+                    const fullPath = path.join(nodePath, args.path);
+                    if(await fsExtra.pathExists(fullPath)) {
+                        return {};
+                    }
+                }
+
+                return {
+                    external: true
+                }
+            });
             build.onLoad({ filter: /.*/ }, async args => {
                 if(!args.path.endsWith('.node') || !await fsExtra.pathExists(args.path)) {
                     return {};
@@ -82,7 +98,7 @@ async function esbuildCodeGenerationStep1({ entryPoint, outfile, define: addToDe
 
     const bundleResult = await esbuild.build({
         ...fullESBuildOptions,
-        plugins: [nodeAddonReadPlugin(nodeAddons), ...fullESBuildOptions.plugins ?? []],
+        plugins: [nodeAddonReadPlugin(nodeAddons, fullESBuildOptions.nodePaths), ...fullESBuildOptions.plugins ?? []],
     });
 
     if (bundleResult.errors.length) {

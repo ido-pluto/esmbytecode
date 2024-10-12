@@ -1,6 +1,6 @@
 {
   "name": "esmbytecode",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Compile JS/TS ESM to Bytecode",
   "main": "dist/index.js",
   "type": "module",
