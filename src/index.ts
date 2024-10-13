@@ -1,16 +1,19 @@
 import { Options as SWCOptions, transform } from "@swc/core";
+import bytenode from 'bytenode';
 import deepmerge from 'deepmerge';
 import * as esbuild from 'esbuild';
+import fsExtra from "fs-extra/esm";
 import fs from 'fs/promises';
+import { createRequire } from 'node:module';
+import path from "path";
+import { v4 as uuid } from 'uuid';
+import { codeWrapper } from "./codeWrapper.js";
+import { createRunFile } from "./createRunFile.js";
 import { findNodeAddon } from "./patches/findNodeAddons.js";
 import { parseTextStream, ReBuildCodeString } from "./reader/render.js";
 import { addVars, addVarsData, findNodeModulesDir } from "./utils.js";
-import { createRunFile } from "./createRunFile.js";
-import path from "path";
-import bytenode from 'bytenode';
-import { codeWrapper } from "./codeWrapper.js";
-import fsExtra from "fs-extra/esm";
-import {v4 as uuid} from 'uuid';
+import parentModule from 'parent-module';
+
 
 export type BundleESMOptions = {
     entryPoint: string;
@@ -20,6 +23,7 @@ export type BundleESMOptions = {
     esbuildOptions?: esbuild.BuildOptions;
     swcOptions?: SWCOptions;
     alsoJSOutput?: boolean;
+    createRunFile?: boolean;
 };
 
 export type BundleESMState = BundleESMOptions & {
@@ -32,23 +36,23 @@ function nodeAddonReadPlugin(nodeAddons: Map<string, string>, nodePaths: string[
         name: 'node-file-plugin',
         setup(build) {
             build.onResolve({ filter: /.*/ }, async args => {
-                if(path.isAbsolute(args.path) || args.path.startsWith('.')) {
+                if (!args.path.startsWith('@')) {
                     return {};
                 }
 
-                for(const nodePath of nodePaths) {
+                for (const nodePath of nodePaths) {
                     const fullPath = path.join(nodePath, args.path);
-                    if(await fsExtra.pathExists(fullPath)) {
+                    if (await fsExtra.pathExists(fullPath)) {
                         return {};
                     }
                 }
 
                 return {
                     external: true
-                }
+                };
             });
             build.onLoad({ filter: /.*/ }, async args => {
-                if(!args.path.endsWith('.node') || !await fsExtra.pathExists(args.path)) {
+                if (!args.path.endsWith('.node') || !await fsExtra.pathExists(args.path)) {
                     return {};
                 }
 
@@ -58,7 +62,7 @@ function nodeAddonReadPlugin(nodeAddons: Map<string, string>, nodePaths: string[
                 return {
                     contents: `module.exports = "${name}";`,
                     loader: 'js'
-                }
+                };
             });
         }
     };
@@ -139,7 +143,7 @@ async function codePatchesStep3(code: string, state: BundleESMState) {
     return patchesContainer.buildCode();
 }
 
-export async function ESMBytecodeBundle(options: BundleESMOptions) {
+export async function compileToJSC(options: BundleESMOptions) {
     await fsExtra.ensureDir(path.dirname(options.outfile));
 
     const nodeModules = await findNodeModulesDir(options);
@@ -169,5 +173,30 @@ export async function ESMBytecodeBundle(options: BundleESMOptions) {
         await fs.unlink(writeJS);
     }
 
-    await createRunFile(state);
+    if (state.createRunFile) {
+        await createRunFile(state);
+    }
+}
+
+const cacheRequires = new Map<string, any>();
+export async function importJSC(moduleName: string) {
+    const modulePath = parentModule()!;
+
+    let module;
+    if (cacheRequires.has(modulePath)) {
+        module = cacheRequires.get(modulePath)(moduleName);
+    } else {
+        const require = createRequire(modulePath);
+        cacheRequires.set(modulePath, require);
+        module = await require(moduleName);
+    }
+
+    if (module?.exports) {
+        for (const key in module.exports) {
+            module[key] = module.exports[key];
+        }
+        delete module.exports;
+    }
+
+    return module;
 }

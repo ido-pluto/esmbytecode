@@ -1,6 +1,6 @@
 {
   "name": "esmbytecode",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Compile JS/TS ESM to Bytecode",
   "main": "dist/index.js",
   "type": "module",
@@ -13,7 +13,7 @@
     "esmbytecode": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc --build tsconfig.json && cp src/reader/build.wasm dist/reader/build.wasm",
+    "build": "rm -r ./dist && tsc --build tsconfig.json && cp src/reader/build.wasm dist/reader/build.wasm",
     "prepack": "npm run build"
   },
   "keywords": [
@@ -49,6 +49,7 @@
     "esbuild": "^0.24.0",
     "fs-extra": "^11.2.0",
     "glob": "^11.0.0",
+    "parent-module": "^3.1.0",
     "uuid": "^10.0.0"
   },
   "devDependencies": {

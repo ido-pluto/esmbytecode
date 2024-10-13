@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { ESMBytecodeBundle } from "./index.js";
+import { compileToJSC } from "./index.js";
 import { fileURLToPath } from "url";
 import fsExtra from "fs-extra/esm";
 import path from "path";
@@ -17,10 +17,11 @@ CompileCommand
     .action(async (input: string, output: string, { compress }: { compress: boolean; }) => {
         input = path.resolve(input);
         output = path.resolve(output);
-        
-        await ESMBytecodeBundle({
+
+        await compileToJSC({
             entryPoint: input,
             outfile: output,
+            createRunFile: false,
             compress
         });
         console.log("Done!");
